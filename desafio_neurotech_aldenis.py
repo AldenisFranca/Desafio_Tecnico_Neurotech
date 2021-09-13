@@ -57,7 +57,7 @@ df_det = pd.concat(list_det, axis=0, ignore_index=True)
 """###Construção da Tabela Única"""
 
 # Integração dos dados das tabelas CONS e DET.
-df_completo = pd.merge(df_det, df_cons, how='outer', on=['#ID_EVENTO','UF_PRESTADOR','LG_OUTLIER'])
+df_completo = pd.merge(df_det, df_cons, how='left', on=['#ID_EVENTO','UF_PRESTADOR','LG_OUTLIER'])
 
 """###Análise Exploratória dos Dados
 
@@ -79,10 +79,10 @@ df_completo.columns
 """#####Informações Estatísticas dos Dados"""
 
 # Métricas estatísticas da tabela CONS.
-df_cons.describe(include='all')
+df_cons.describe(percentiles = [.1,.2,.25,.3,.4,.5,.6,.7,.75,.8,.9])
 
 # Métricas estatísticas da tabela DET.
-df_det.describe(include='all')
+df_det.describe(percentiles = [.1,.2,.25,.3,.4,.5,.6,.7,.75,.8,.9])
 
 # Quantidade de dados nulos em cada coluna da base consolidada.
 df_completo.isnull().sum()
@@ -123,7 +123,7 @@ print('')
 print(df_completo.groupby('CARATER_ATENDIMENTO').size())
 print('')
 
-print(df_completo.groupby('LG_OUTLIER').size())
+print(df_completo.groupby('NR_DIARIAS_UTI').size())
 print('')
 
 print('MÉDIA - UF x Idade:')
@@ -136,19 +136,23 @@ df_completo.groupby('QT_PROCEDIMENTO')['LG_OUTLIER'].size().sort_values()
 
 #Construção dos gráficos boxplot de cada classe.
 
-colunas = ['#ID_EVENTO','QT_PROCEDIMENTO','VL_PROCEDIMENTO','VL_PAGO_FORNECEDOR',
-           'CD_TABELA_REFERENCIA','LG_PACOTE','IND_TABELA_PROPRIA','LG_OUTLIER',
-           'ID_PLANO', 'IDADE_BENEFICIARIO','CD_MUNIC_BENEFICIARIO','CD_MODALIDADE_OPERADORA',
-        'CD_MUNIC_PRESTADOR','TIPO_INTERNACAO','REGIME_INTERNACAO', 'MOTIVO_ENCERRAMENTO',
-        'NR_DIARIAS_ACOMPANHANTE', 'NR_DIARIAS_UTI','LG_VALOR_PREESTABELECIDO']
+colunas = ['QT_PROCEDIMENTO','VL_PROCEDIMENTO','VL_PAGO_FORNECEDOR',
+           'CD_TABELA_REFERENCIA','IDADE_BENEFICIARIO','CD_MUNIC_BENEFICIARIO',
+           'CD_MODALIDADE_OPERADORA','CD_MUNIC_PRESTADOR','TIPO_INTERNACAO',
+           'NR_DIARIAS_ACOMPANHANTE', 'NR_DIARIAS_UTI',]
 #A lista colunas refere-se somente às colunas de valores numéricos do df_completo.
 
 print('BOXPLOT dos dados de cada classe:\n')
 for k in range(0,len(colunas)):
-  df_completo[colunas[k]].plot(kind='box', subplots=True, layout=(8,4), sharex=False, sharey=False, figsize=(18,18))
+  df_completo[colunas[k]].plot(kind='box', subplots=True, layout=(10,5), sharex=False, sharey=False, figsize=(18,18))
   plt.show()
 
 #Construção dos gráficos de histograma de cada classe.
+
+colunas = ['QT_PROCEDIMENTO','VL_PROCEDIMENTO','VL_PAGO_FORNECEDOR',
+           'CD_TABELA_REFERENCIA','IDADE_BENEFICIARIO','CD_MUNIC_BENEFICIARIO',
+           'CD_MODALIDADE_OPERADORA','CD_MUNIC_PRESTADOR','TIPO_INTERNACAO',
+           'NR_DIARIAS_ACOMPANHANTE', 'NR_DIARIAS_UTI',]
 
 print("HISTOGRAMAS dos dados de cada classe:\n")
 df_completo.hist(layout=(5,4),figsize=(20,20))
@@ -164,7 +168,7 @@ plt.savefig('heatmap_cons.jpg',dpi=200)
 #Construção da matriz de correlação entre as classes do df_det.
 
 print('Matriz de Correlação - HEATMAP no df_det:\n')
-plt.figure(figsize=(12,12))
+plt.figure(figsize=(10,10))
 ax=sns.heatmap(df_det.corr(), cmap='Blues', annot=True)
 plt.savefig('heatmap_det.jpg',dpi=200)
 
@@ -219,24 +223,18 @@ df_completo_filt['DIAS_INTERNACAO'].describe()
 
 col_null = [['QT_PROCEDIMENTO','VL_PROCEDIMENTO','LG_PACOTE','IND_TABELA_PROPRIA','IDADE_BENEFICIARIO','NR_DIARIAS_UTI','NR_DIARIAS_ACOMPANHANTE'],
             ['VL_PAGO_FORNECEDOR'],
-            ['TIPO_INTERNACAO','REGIME_INTERNACAO','MOTIVO_ENCERRAMENTO','CD_TABELA_REFERENCIA','DIAS_INTERNACAO','LG_VALOR_PREESTABELECIDO','CD_TUSS_PROCEDIMENTO'],
-            ['CD_MUNIC_PRESTADOR', 'CD_MUNIC_BENEFICIARIO','CD_MODALIDADE_OPERADORA', 'ID_PLANO', 'SEXO_BENEFICIARIO', 'CID_1', 'CARATER_ATENDIMENTO'],
-            ['PORTE_OPERADORA']]
+            ['TIPO_INTERNACAO','REGIME_INTERNACAO','MOTIVO_ENCERRAMENTO','CD_TABELA_REFERENCIA','DIAS_INTERNACAO','LG_VALOR_PREESTABELECIDO',
+             'CD_TUSS_PROCEDIMENTO','CD_MUNIC_PRESTADOR', 'CD_MUNIC_BENEFICIARIO','CD_MODALIDADE_OPERADORA', 'ID_PLANO', 'SEXO_BENEFICIARIO', 'CID_1', 
+             'CARATER_ATENDIMENTO','PORTE_OPERADORA']]
 
-for col in col_null[0]:
-  df_completo_filt[col].fillna(df_completo_filt[col].median(),inplace=True)
-
-for col in col_null[1]:
-  df_completo_filt[col].fillna(df_completo_filt[col].mean(),inplace=True)
-
-for col in col_null[2]:
-  df_completo_filt[col].fillna(df_completo_filt[col].mode()[0],inplace=True)
-
-for col in col_null[3]:
-  df_completo_filt[col].fillna(-1,inplace=True)
-
-for col in col_null[4]:
-  df_completo_filt[col].fillna('SEM BENEFICIARIOS',inplace=True)
+for i in range(0,len(col_null)):
+  for col in col_null[i]:
+    if i == 0:
+      df_completo_filt[col].fillna(df_completo_filt[col].median(),inplace=True)
+    elif i == 1:
+      df_completo_filt[col].fillna(df_completo_filt[col].mean(),inplace=True)
+    elif i == 2:
+      df_completo_filt[col].fillna(-1,inplace=True)
 
 # Quantidade de valores nulos por coluna da base filtrada após o tratamento.
 
@@ -256,6 +254,7 @@ df_completo_filt['CARATER_ATENDIMENTO'].replace(str_atend,int_atend,inplace=True
 
 df_completo_filt['CARATER_ATENDIMENTO'] = df_completo_filt['CARATER_ATENDIMENTO'].astype(str)
 df_completo_filt['SEXO_BENEFICIARIO'] = df_completo_filt['SEXO_BENEFICIARIO'].astype(str)
+df_completo_filt['PORTE_OPERADORA'] = df_completo_filt['PORTE_OPERADORA'].astype(str)
 df_completo_filt['CID_1'] = df_completo_filt['CID_1'].astype(str)
 
 # Aplicação da classe LabelEncoder a algumas colunas.
@@ -283,7 +282,7 @@ dfOneHot3 = pd.DataFrame(Z, columns= ['ATEND_'+str(int(i)) for i in range(Z.shap
 df_completo_filt['PORTE_GRANDE'] = dfOneHot1['PORTE_OPER_0']
 df_completo_filt['PORTE_MEDIO'] = dfOneHot1['PORTE_OPER_1']
 df_completo_filt['PORTE_PEQUENO'] = dfOneHot1['PORTE_OPER_2']
-df_completo_filt['SEM_BENEFICIARIOS'] = dfOneHot1['PORTE_OPER_3']
+df_completo_filt['PORTE_NAO_INFOR'] = dfOneHot1['PORTE_OPER_3']
 
 df_completo_filt['SEXO_F'] = dfOneHot2['SEXO_1']
 df_completo_filt['SEXO_M'] = dfOneHot2['SEXO_2']
@@ -303,6 +302,8 @@ df_completo_filt.head()
 df_completo_filt.info()
 
 """#####Normalização dos Dados"""
+
+subset = df_completo_filt.sample(frac=0.25)
 
 # Uso de fórmulas matemáticas para calcular a normalização, usando a amplitude dos dados.
 # Método semelhante é usado na classe MinMaxScaler do sklearn.
